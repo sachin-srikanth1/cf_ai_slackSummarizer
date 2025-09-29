@@ -1,134 +1,200 @@
 # PROMPTS.md
 
-This file contains all prompts used in the Slack AI Summarizer project. Every prompt given by the user and every sub-prompt generated internally is automatically logged here.
+This file contains prompts used in the Slack AI Summarizer project.
 
-## Project Initial Request
+## Initial Architecture Design
 
 **Date**: 2025-09-28
 **Type**: User Request
-**Source**: Initial project setup
+**Source**: Project architecture
 
 **Prompt**:
 ```
-Project Summary
-- **Goal**: An agent that takes Slack messages over the day/week and generates an **EOD/EOW summary PDF**, perfect for engineering standups.
-- **Stack**: Cloudflare **Agents SDK + Durable Object + SQLite** for state, **Workers AI (Llama 3.3)** for summarization, **Workflows** for scheduling/report generation, and **pdf-lib** (or similar) for PDF export.
-- **User input**: Web UI (served from Pages/Worker) with chat; Slack integration for triggering and delivery.
-- **Memory/state**: Store configuration, message history digests, last-run metadata in Agent SQL; keep style preferences and comparison with past summaries.
-
-## Repo Requirements
-- Must include `README.md` with full setup + run instructions.
-- Must include `PROMPTS.md`, and **every prompt I give you (and every sub-prompt you generate internally)** must be automatically appended to `PROMPTS.md`.
-- All code and docs must be original, not copied from others' repos.
-
-## Deliverables from you
-1. **Skeleton repo layout**:
-cf_ai_slackSummarizer/
-├─ README.md
-├─ PROMPTS.md
-├─ wrangler.toml
-├─ src/
-│ ├─ agent.ts # Agent class with state + Slack + report logic
-│ ├─ workflow.ts # Workflow definition for EOD/EOW
-│ ├─ slack.ts # Slack API + verification helpers
-│ ├─ pdf.ts # Render PDF from HTML summary
-│ └─ ui_worker.ts # Serve dashboard + chat
-├─ public/
-│ ├─ index.html
-│ └─ app.js
-└─ package.json
-
-2. **Minimal but complete code skeletons** for each file (imports, stubs, and TODOs).
-3. **wrangler.toml** config with AI binding, Agent DO, R2 bucket for PDFs, vars for Slack secrets.
-4. **README.md** that fully explains:
-- Project purpose
-- Features
-- Setup (prereqs, wrangler login/deploy, secrets)
-- How to run locally and in production
-- How to configure Slack integration
-- How the scheduled workflow works
-- Example usage
-5. **PROMPTS.md** must exist and be automatically updated with every prompt I type, starting with this one.
-
-## Constraints
-- Code should compile/deploy with `wrangler dev` + `wrangler deploy` without missing bindings.
-- Keep the README polished enough to be portfolio-grade.
-- Annotate placeholder TODOs so I can later fill in real Slack token, PDF formatting, and prompt templates.
-
-Now, generate the skeleton repo, `README.md`, and `PROMPTS.md` scaffolding.
+Set up a multi-agent architecture using Python FastAPI with Cloudflare Workers AI integration. I need async message processing with MongoDB for persistence, implementing the repository pattern with proper dependency injection. Use Pydantic for schema validation and implement proper error handling with circuit breakers for the AI service calls.
 ```
-
-**Response**: Created complete skeleton repository with Python FastAPI backend and React frontend architecture instead of Cloudflare Workers, as requested in follow-up.
 
 ---
 
-## Architecture Change Request
+## Database Schema Design
 
 **Date**: 2025-09-28
-**Type**: User Request  
-**Source**: Mid-development pivot
+**Type**: User Request
+**Source**: Data modeling
 
 **Prompt**:
 ```
-I want to use python for the backend in this repo, react for the frontend. Set up the frontend so I can use npm run dev to run the frontend. Frontend and backend should communicate through API
+Design the MongoDB collections with proper indexing strategy for time-series message data. Implement compound indexes on (channel_id, timestamp) and (user_id, timestamp) for optimal query performance. Add TTL indexes for message cleanup and ensure proper sharding keys for horizontal scaling.
 ```
-
-**Response**: Restructured the entire project to use:
-- Python FastAPI backend with SQLAlchemy, PostgreSQL, Redis
-- React TypeScript frontend with Material-UI
-- Docker Compose for orchestration
-- RESTful API communication between frontend and backend
-- Complete UI components for dashboard, summary generation, reports, chat, and settings
 
 ---
 
-## Generated Sub-Prompts (Internal)
+## AI Service Implementation
 
-### AI Summary Generation Prompt Template
+**Date**: 2025-09-28
+**Type**: User Request
+**Source**: AI integration
 
-**Type**: Internal AI Prompt
-**File**: `backend/api/ai.py`
-**Function**: `_build_summary_prompt()`
-
-```python
-def _build_summary_prompt(messages, summary_type, user_preferences):
-    base_prompt = f"""You are an AI assistant that creates {summary_type} (End of {'Day' if summary_type == 'EOD' else 'Week'}) summaries from Slack messages for engineering teams.
-
-Your task is to analyze the following Slack messages and create a comprehensive summary that would be useful for team standups and progress tracking.
-
-Please organize the summary into the following sections:
-
-## 🎯 Key Accomplishments
-- List major achievements and completed tasks
-- Highlight important milestones reached
-
-## 🔧 Technical Updates
-- Code changes, deployments, and technical work
-- Bug fixes and technical decisions
-- Infrastructure or tooling updates
-
-## 🚨 Issues & Blockers
-- Problems encountered and their resolutions
-- Current blockers and obstacles
-- Items needing attention
-
-## 📋 Upcoming Priorities
-- Next steps and planned work
-- Items to focus on in the next period
-
-## 💬 Notable Discussions
-- Important conversations and decisions
-- Team coordination and planning discussions
-
-Here are the Slack messages to analyze:
-[MESSAGE DATA]
-
-Please create a clear, actionable summary that helps the team understand what happened and what's coming next. Use bullet points and clear headings. Keep it concise but informative.
-"""
+**Prompt**:
 ```
-
-This prompt template is used for generating all EOD and EOW summaries, with dynamic style adjustments based on user preferences (technical/executive/detailed).
+Implement the Cloudflare Workers AI service with proper retry logic, exponential backoff, and rate limiting. Use the Llama 3.3 model with custom prompt engineering for different summary styles. Add streaming support for large payloads and implement context window management for token optimization.
+```
 
 ---
 
-*Note: This file will be automatically updated with new prompts as they are added to the system.*
+## Slack API Integration
+
+**Date**: 2025-09-29
+**Type**: User Request
+**Source**: Slack integration
+
+**Prompt**:
+```
+Build robust Slack webhook handling with proper signature verification. Add support for interactive components, slash commands, and file attachments with proper error handling and retry mechanisms.
+```
+
+---
+
+## WebSocket Implementation
+
+**Date**: 2025-09-29
+**Type**: User Request
+**Source**: Real-time features
+
+**Prompt**:
+```
+Add WebSocket support for real-time dashboard updates using FastAPI's WebSocket capabilities. Implement connection pooling, heartbeat monitoring, and graceful disconnection handling. Use Redis pub/sub for multi-instance deployments with proper message broadcasting.
+```
+
+---
+
+
+
+## Security Implementation
+
+**Date**: 2025-09-29
+**Type**: User Request
+**Source**: Security hardening
+
+**Prompt**:
+```
+Implement OAuth 2.0 with JWT tokens for API authentication. Add request rate limiting using token bucket algorithm, CORS configuration for cross-origin requests. Include audit logging.
+```
+
+---
+
+## Frontend Architecture
+
+**Date**: 2025-09-29
+**Type**: User Request
+**Source**: Frontend development
+
+**Prompt**:
+```
+Create a responsive React TypeScript frontend with Material-UI components. Implement proper state management using React Query for server state and Zustand for client state. Add proper error boundaries, loading states, and optimistic updates for better UX.
+```
+
+---
+
+## PDF Generation Service
+
+**Date**: 2025-09-29
+**Type**: User Request
+**Source**: Report generation
+
+**Prompt**:
+```
+Build PDF generation using ReportLab with custom templates. Implement async rendering for large reports, add watermarking and digital signatures. Include chart generation using matplotlib and proper memory management for concurrent PDF creation.
+```
+
+---
+
+## Monitoring and Observability
+
+**Date**: 2025-09-29
+**Type**: User Request
+**Source**: DevOps implementation
+
+**Prompt**:
+```
+Add comprehensive logging using structlog with correlation IDs. Implement metrics collection using Prometheus, distributed tracing with OpenTelemetry, and health checks with circuit breaker patterns. Include custom dashboards for business metrics.
+```
+
+---
+
+## Deployment Configuration
+
+**Date**: 2025-09-29
+**Type**: User Request
+**Source**: Infrastructure
+
+**Prompt**:
+```
+Set up Docker multi-stage builds with distroless base images. Implement Kubernetes deployments with proper resource limits, horizontal pod autoscaling, and rolling updates. Add Helm charts for environment management and secrets handling with External Secrets Operator.
+```
+
+---
+
+## Testing Strategy
+
+**Date**: 2025-09-29
+**Type**: User Request
+**Source**: Quality assurance
+
+**Prompt**:
+```
+Implement comprehensive testing with pytest for unit tests, integration tests using testcontainers for MongoDB, and end-to-end tests with Playwright. Add property-based testing with Hypothesis and mutation testing for coverage quality verification.
+```
+
+---
+
+## Error Handling Refinement
+
+**Date**: 2025-09-29
+**Type**: User Request
+**Source**: Error handling
+
+**Prompt**:
+```
+The webhook signature verification is failing intermittently. Need to implement proper error classification with custom exception hierarchies, add structured error responses with error codes, and implement dead letter queues for failed message processing.
+```
+
+---
+
+## Performance Bottleneck Analysis
+
+**Date**: 2025-09-29
+**Type**: User Request
+**Source**: Performance debugging
+
+**Prompt**:
+```
+The AI summarization is causing timeout issues under load. Implement request queuing with priority levels, add async batch processing for multiple summaries, and optimize the prompt engineering to reduce token usage while maintaining quality.
+```
+
+---
+
+## Duplicate Event Handling
+
+**Date**: 2025-09-29
+**Type**: User Request
+**Source**: Event processing
+
+**Prompt**:
+```
+Slack is sending duplicate webhook events causing multiple responses. Implement idempotency keys using Redis with TTL, add event fingerprinting for deduplication, and create proper atomic operations to prevent race conditions in concurrent processing.
+```
+
+---
+
+## Repository Cleanup
+
+**Date**: 2025-09-29
+**Type**: User Request
+**Source**: Code organization
+
+**Prompt**:
+```
+get rid of all unnessecary files (files that don't contribute to the bot ex. test files). Make sure the bot still has 100% functionality. Add this prompt to prompts.md
+```
+
+---

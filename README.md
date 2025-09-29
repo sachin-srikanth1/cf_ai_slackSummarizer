@@ -1,440 +1,420 @@
-# Slack AI Summarizer
+# 🤖 Slack AI Summarizer
 
-An intelligent agent that automatically generates EOD (End of Day) and EOW (End of Week) summary PDFs from Slack messages, perfect for engineering standups and team communication.
+An intelligent Slack bot that automatically generates EOD (End of Day) and EOW (End of Week) summaries from your team's Slack conversations using AI. Perfect for engineering standups, team communication, and keeping track of daily progress.
 
-## 🚀 Features
+## ✨ Features
 
-- **AI-Powered Summaries**: Generate intelligent summaries using Cloudflare Workers AI with Llama 3.3
-- **Multiple Report Types**: End of Day (EOD) and End of Week (EOW) reports
-- **PDF Export**: Professional PDF reports with customizable formatting
-- **Slack Integration**: Direct integration with Slack for message collection and delivery
-- **Web Dashboard**: React-based frontend for configuration and report management
-- **Chat Interface**: Interactive AI assistant for natural language commands
-- **Scheduled Reports**: Automated report generation with configurable timing
-- **Channel Filtering**: Include/exclude specific channels from summaries
-- **Custom Prompts**: Personalize AI summary generation with custom instructions
-- **Report History**: Track and download previous reports
+- **🤖 Slack Bot Integration**: Mention the bot directly in Slack channels to generate summaries
+- **🧠 AI-Powered Summaries**: Uses Cloudflare Workers AI with Llama 3.3 for intelligent analysis
+- **📊 Multiple Report Types**: End of Day (EOD) and End of Week (EOW) reports
+- **📄 PDF Generation**: Professional PDF reports with formatted summaries
+- **🔄 Real-time Message Sync**: Automatically syncs and stores Slack messages
+- **🌐 Web Dashboard**: Simple HTML interface for testing and management
+- **⚡ Quick Commands**: Easy-to-use bot commands via Slack mentions
+- **🔍 Channel Filtering**: Works across all channels the bot has access to
+- **📈 Message Analytics**: Shows processed message counts and timestamps
 
-## 🏗️ Architecture
+## 🚀 Quick Start
 
-- **Backend**: Python FastAPI with MongoDB/Beanie ODM
-- **Frontend**: React with TypeScript and Material-UI
-- **Database**: MongoDB for flexible data persistence
-- **AI Provider**: Cloudflare Workers AI with Llama 3.3 for powerful summarization
-- **State Management**: Cloudflare Durable Objects pattern for persistent state
-- **Workflows**: Cloudflare Workflows pattern for coordinated task execution
-- **PDF Generation**: ReportLab for professional PDF creation
-- **Local Development**: Simple setup with virtual environments
+### Prerequisites
 
-## 📋 Prerequisites
-
-- Node.js 18+
-- Python 3.11+
-- MongoDB (local or cloud)
-- Slack App with bot token and signing secret
+- Python 3.8+
+- MongoDB (local or Atlas)
+- Slack App with bot permissions
 - Cloudflare Account with Workers AI access
-- Cloudflare API Token with AI permissions
+- ngrok (for Slack webhook integration)
 
-## 🛠️ Setup Instructions
-
-### 1. Clone the Repository
+### 1. Clone & Setup Environment
 
 ```bash
 git clone <repository-url>
 cd cf_ai_slackSummarizer
-```
-
-### 2. Environment Configuration
-
-Copy the example environment file and configure your settings:
-
-```bash
 cp .env.example .env
 ```
 
-Edit `.env` with your configuration:
+### 2. Configure Environment Variables
+
+Edit `.env` with your credentials:
 
 ```env
 # Slack Configuration
 SLACK_BOT_TOKEN=xoxb-your-bot-token-here
 SLACK_SIGNING_SECRET=your-signing-secret-here
 
-# Cloudflare Workers AI Configuration (Llama 3.3)
-CLOUDFLARE_ACCOUNT_ID=your-cloudflare-account-id-here
-CLOUDFLARE_API_TOKEN=your-cloudflare-api-token-here
+# Cloudflare Workers AI Configuration
+CLOUDFLARE_ACCOUNT_ID=your-cloudflare-account-id
+CLOUDFLARE_API_TOKEN=your-cloudflare-api-token
 
 # MongoDB Configuration
 MONGODB_URL=mongodb://localhost:27017
-DATABASE_NAME=slack_summarizer
-
-# Other settings...
+DATABASE_NAME=slackSummarizer
 ```
 
-### 3. Cloudflare Workers AI Setup
+### 3. Install Dependencies & Start Backend
 
-1. **Create Cloudflare Account**: Sign up at [cloudflare.com](https://www.cloudflare.com/)
-2. **Enable Workers AI**: Go to your dashboard and enable Workers AI
-3. **Get Account ID**: 
-   - Go to the right sidebar of your Cloudflare dashboard
-   - Copy your Account ID
-4. **Create API Token**:
-   - Go to "My Profile" → "API Tokens"
-   - Create a custom token with permissions:
-     - `Account:Cloudflare Workers:Edit`
-     - `Zone:Zone:Read` (if using custom domains)
-   - Copy the token to `CLOUDFLARE_API_TOKEN`
-5. **Configure Environment**: Add your Account ID and API Token to `.env`
-
-The system uses Llama 3.3 (`@cf/meta/llama-3.3-70b-instruct-fp8`) for all AI operations including:
-- Slack message summarization
-- Chat interactions
-- Custom summary generation
-- Summary improvement suggestions
-
-### 4. Slack App Setup
-
-1. Create a new Slack app at [api.slack.com](https://api.slack.com/apps)
-2. Enable the following OAuth scopes:
-   - `channels:read` - View basic information about public channels
-   - `channels:history` - View messages in public channels
-   - `groups:read` - View basic information about private channels
-   - `groups:history` - View messages in private channels
-   - `chat:write` - Send messages
-   - `files:write` - Upload files
-   - `users:read` - View people in the workspace
-
-3. Install the app to your workspace
-4. Copy the Bot User OAuth Token to `SLACK_BOT_TOKEN`
-5. Copy the Signing Secret to `SLACK_SIGNING_SECRET`
-
-### 5. Install MongoDB
-
-#### Option 1: Local MongoDB Installation
-
-**macOS (using Homebrew):**
 ```bash
+# Install Python dependencies
+cd backend
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
+
+# Start the backend server
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
+
+### 4. Setup Slack App (Required for Bot Functionality)
+
+#### Create Slack App:
+1. Go to [api.slack.com/apps](https://api.slack.com/apps)
+2. Click "Create New App" → "From scratch"
+3. Name: `cf_ai_slackSummarizer`
+4. Select your workspace
+
+#### Configure OAuth Scopes:
+Go to **OAuth & Permissions** and add these Bot Token Scopes:
+```
+channels:read       - View basic information about public channels
+channels:history    - View messages in public channels  
+groups:read         - View basic information about private channels
+groups:history      - View messages in private channels
+chat:write          - Send messages as the bot
+app_mentions:read   - View messages that mention the app
+users:read          - View people in the workspace
+```
+
+#### Install App to Workspace:
+1. Click "Install to Workspace"
+2. Authorize the permissions
+3. Copy the **Bot User OAuth Token** → Add to `.env` as `SLACK_BOT_TOKEN`
+4. Go to **Basic Information** → Copy **Signing Secret** → Add to `.env` as `SLACK_SIGNING_SECRET`
+
+### 5. Setup Cloudflare Workers AI
+
+#### Get Cloudflare Credentials:
+1. Sign up at [cloudflare.com](https://cloudflare.com)
+2. Go to dashboard sidebar → Copy **Account ID**
+3. Go to **My Profile** → **API Tokens** → **Create Token**
+4. Use template: **Custom token** with permissions:
+   - `Account:Cloudflare Workers:Edit`
+   - `Zone:Zone:Read`
+5. Copy token to `.env` as `CLOUDFLARE_API_TOKEN`
+
+### 6. Setup MongoDB
+
+#### Option A: Local MongoDB
+```bash
+# macOS
 brew tap mongodb/brew
 brew install mongodb-community
 brew services start mongodb/brew/mongodb-community
-```
 
-**Ubuntu/Debian:**
-```bash
-sudo apt-get install gnupg curl
-curl -fsSL https://www.mongodb.org/static/pgp/server-7.0.asc | sudo gpg -o /usr/share/keyrings/mongodb-server-7.0.gpg --dearmor
-echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-7.0.list
-sudo apt-get update
-sudo apt-get install -y mongodb-org
+# Ubuntu/Debian
+sudo apt-get install mongodb-org
 sudo systemctl start mongod
 ```
 
-**Windows:**
-Download and install from https://www.mongodb.com/try/download/community
+#### Option B: MongoDB Atlas (Cloud)
+1. Sign up at [mongodb.com/atlas](https://mongodb.com/atlas)
+2. Create free cluster
+3. Get connection string → Update `MONGODB_URL` in `.env`
 
-#### Option 2: MongoDB Atlas (Cloud)
+### 7. Enable Slack Webhooks (For @mentions)
 
-1. Sign up at https://www.mongodb.com/atlas
-2. Create a free cluster
-3. Get your connection string
-4. Update `MONGODB_URL` in `.env` with your Atlas connection string
+#### Setup ngrok:
+```bash
+# Install ngrok
+brew install ngrok  # or download from ngrok.com
 
-### 6. Install Dependencies
+# Expose your backend
+ngrok http 8000
+```
+
+#### Configure Slack Event Subscriptions:
+1. Copy the ngrok HTTPS URL (e.g., `https://abc123.ngrok.io`)
+2. In your Slack app → **Event Subscriptions**
+3. Enable Events → **Request URL**: `https://abc123.ngrok.io/api/slack/webhook`
+4. **Subscribe to bot events**:
+   - `app_mention` - When someone mentions your bot
+   - `message.channels` - To read channel messages
+5. **Save Changes** → **Reinstall App to Workspace**
+
+### 8. Test the Setup
+
+#### Check Backend Health:
+```bash
+curl http://localhost:8000/health
+```
+
+Should return all services as "healthy".
+
+#### Start Web Interface:
+```bash
+# In the frontend directory
+python3 -m http.server 8080
+```
+
+Visit: http://localhost:8080
+
+## 🎯 Using the Slack Bot
+
+### Add Bot to Channels
+1. Go to any Slack channel
+2. Type: `/invite @cf_ai_slackSummarizer`
+3. The bot is now ready to use in that channel
+
+### Bot Commands
+
+Mention the bot with these commands:
 
 ```bash
-# Install root dependencies (includes concurrently for running both servers)
-npm install
-
-# Install all dependencies for both frontend and backend
-npm run setup
+@cf_ai_slackSummarizer EOD          # Generate End of Day summary
+@cf_ai_slackSummarizer EOW          # Generate End of Week summary  
+@cf_ai_slackSummarizer sync         # Sync recent messages
+@cf_ai_slackSummarizer help         # Show help message
 ```
 
-### 7. Running the Application
+### Example Usage:
 
-#### Option 1: Start Both Services Together (Recommended)
+```
+You: @cf_ai_slackSummarizer EOD
 
+Bot: 🔄 Generating EOD summary... This may take a moment.
+     📈 Processing 45 messages from 2025-09-29...
+     📊 EOD Summary Generated
+     
+     ## 🎯 Key Accomplishments
+     * Completed user authentication feature
+     * Fixed 3 critical bugs in payment system
+     * Deployed staging environment
+     
+     ## 🔧 Technical Updates  
+     * Updated React to v18.2
+     * Implemented Redis caching
+     * Database migration completed
+     
+     ## 🚨 Issues & Blockers
+     * AWS service outage affecting deployment
+     * Waiting for API keys from third-party service
+     
+     ## 📋 Upcoming Priorities
+     * Performance optimization sprint
+     * Security audit preparation
+     
+     📈 Processed 45 messages
+```
+
+## 🌐 Web Dashboard
+
+Access the web interface at http://localhost:8080
+
+### Features:
+- **📊 System Status**: Real-time health monitoring
+- **⚡ Quick Actions**: One-click summary generation
+- **📺 Channel Management**: View available Slack channels
+- **📝 Custom Summaries**: Generate reports with custom date ranges
+- **🎛️ Advanced Options**: Custom AI prompts and channel filtering
+
+### Quick Actions:
+- **🔄 Sync Messages**: Pull latest messages from Slack
+- **📊 Today's EOD**: Generate end-of-day summary for today
+- **📈 This Week EOW**: Generate week summary
+- **🧪 Test API**: Verify backend connectivity
+
+## 🔧 API Reference
+
+The backend provides a REST API at `http://localhost:8000`:
+
+### Health Check
 ```bash
-npm start
+GET /health
 ```
 
-This will start both the frontend (http://localhost:3000) and backend (http://localhost:8000) simultaneously.
-
-#### Option 2: Start Services Separately
-
+### Generate Summary
 ```bash
-# Terminal 1 - Start backend
-npm run start-backend
+POST /api/summary/generate
+Content-Type: application/json
 
-# Terminal 2 - Start frontend  
-npm run dev
+{
+  "type": "EOD",
+  "date_range": {
+    "start": "2025-09-29T00:00:00Z",
+    "end": "2025-09-29T23:59:59Z"
+  }
+}
 ```
 
-#### For Windows Users
-
-If you're on Windows, use the Windows-specific backend script:
-
+### Sync Slack Messages
 ```bash
-npm run start-backend-windows
+POST /api/slack/sync
+Content-Type: application/json
+
+{
+  "hours_back": 24
+}
 ```
 
-### 8. Verify Setup
-
-1. **MongoDB**: Ensure MongoDB is running (local) or Atlas connection works
-2. **Cloudflare Workers AI**: Verify credentials are correct and AI service is accessible
-3. **Frontend**: Should be available at http://localhost:3000
-4. **Backend API**: Should be available at http://localhost:8000
-5. **Health Check**: http://localhost:8000/health should show all services as healthy
-6. **AI Service**: The health check should confirm Cloudflare Workers AI connectivity
-
-## 🌐 Usage
-
-### Web Dashboard
-
-1. Open your browser to `http://localhost:3000`
-2. Navigate through the interface:
-   - **Dashboard**: Overview and quick actions
-   - **Generate**: Create new EOD/EOW reports
-   - **Reports**: View and download previous reports
-   - **Chat**: Interact with the AI assistant
-   - **Settings**: Configure preferences and scheduling
-
-### API Endpoints
-
-The backend API is available at `http://localhost:8000` with the following key endpoints:
-
-- `GET /health` - Health check
-- `POST /api/summary/generate` - Generate new summary
-- `GET /api/reports` - List all reports
-- `GET /api/slack/channels` - Get Slack channels
-- `POST /api/chat` - Chat with AI assistant
-- `GET /api/preferences` - Get user preferences
-- `PUT /api/preferences` - Update preferences
-
-### Slack Integration
-
-The app automatically syncs messages from your Slack workspace. You can:
-
-1. **Manual Sync**: Use the "Sync Messages" button in the dashboard
-2. **Automatic Sync**: Configure background sync in settings
-3. **Channel Selection**: Choose specific channels to include/exclude
-
-### Report Generation
-
-#### Generate EOD Report:
+### Get Slack Channels
 ```bash
-curl -X POST http://localhost:8000/api/summary/generate \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "type": "EOD",
-    "date_range": {
-      "start": "2024-01-15T00:00:00Z",
-      "end": "2024-01-15T23:59:59Z"
-    }
-  }'
+GET /api/slack/channels
 ```
 
-#### Generate EOW Report:
+### Chat with AI
 ```bash
-curl -X POST http://localhost:8000/api/summary/generate \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "type": "EOW",
-    "date_range": {
-      "start": "2024-01-15T00:00:00Z",
-      "end": "2024-01-21T23:59:59Z"
-    }
-  }'
+POST /api/chat
+Content-Type: application/json
+
+{
+  "message": "Generate EOD summary"
+}
 ```
 
-## ⚙️ Configuration
+## 🏗️ Architecture
 
-### Summary Styles
-
-- **Technical**: Focus on code changes, bugs, and implementation details
-- **Executive**: High-level progress, milestones, and business impact  
-- **Detailed**: Comprehensive coverage with full context
-
-### Scheduling
-
-Configure automatic report generation:
-
-- **EOD Reports**: Daily at specified time (e.g., 5:00 PM)
-- **EOW Reports**: Weekly on specified day and time (e.g., Friday 5:00 PM)
-
-### Channel Filtering
-
-- Include specific channels for focused reports
-- Exclude noisy channels from summaries
-- Support for both public and private channels
-
-## 🚀 Production Deployment
-
-For production deployment, consider:
-
-### Environment Variables
-
-Set the following environment variables for production:
-
-```env
-ENVIRONMENT=production
-MONGODB_URL=mongodb+srv://user:password@cluster.mongodb.net/slack_summarizer  # Use MongoDB Atlas for production
-SLACK_BOT_TOKEN=xoxb-production-token
-CLOUDFLARE_ACCOUNT_ID=your-production-account-id
-CLOUDFLARE_API_TOKEN=your-production-api-token
+```
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   Slack App     │◄───┤   ngrok Tunnel   │◄───┤  Backend API    │
+│   (Webhooks)    │    │   (Dev only)     │    │  (FastAPI)      │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
+                                                         │
+                                                         ▼
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│  Web Dashboard  │───►│   Backend API    │◄───┤    MongoDB      │
+│   (HTML/JS)     │    │   (Port 8000)    │    │   (Database)    │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
+                                 │
+                                 ▼
+                       ┌─────────────────┐
+                       │ Cloudflare AI   │
+                       │  (Llama 3.3)    │
+                       └─────────────────┘
 ```
 
-### Security Considerations
+### Components:
+- **Backend**: Python FastAPI server handling API requests
+- **Database**: MongoDB for storing messages and summaries
+- **AI Service**: Cloudflare Workers AI with Llama 3.3
+- **Slack Integration**: Webhook-based bot for real-time interaction
+- **Web Interface**: Simple HTML dashboard for management
+- **Development Tunnel**: ngrok for local webhook testing
 
-- Use MongoDB Atlas for production instead of local MongoDB
-- Store API keys and Cloudflare tokens in secure secret management
-- Enable HTTPS with reverse proxy (nginx, Cloudflare)
-- Configure CORS properly for your domain
-- Implement rate limiting (Cloudflare Workers AI has built-in limits)
-- Regular security updates
-- Monitor Cloudflare Workers AI usage and costs
-
-## 📊 Monitoring
-
-### Health Checks
-
-- Backend: `GET /health`
-- Database connectivity check
-- Cloudflare Workers AI availability
-- State management system status
-- Workflow coordination health
-
-### Logs
-
-View application logs:
-```bash
-# Backend logs
-cd backend && source venv/bin/activate && python -m uvicorn main:app --log-level info
-
-# Check backend processes
-ps aux | grep uvicorn
-```
-
-## 🔧 Development
+## 🛠️ Development
 
 ### Backend Development
-
 ```bash
-# Activate virtual environment
-cd backend && source venv/bin/activate
+cd backend
+source venv/bin/activate
 
-# Run tests
-npm run test-backend
+# Run with auto-reload
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 # Format code
-npm run format-backend
-
-# Or manually:
 black .
 isort .
+
+# Install new dependencies
+pip install package_name
+pip freeze > requirements.txt
 ```
 
 ### Frontend Development
-
 ```bash
 cd frontend
-# Install dependencies
-npm install
 
-# Run development server
-npm start
+# Serve locally
+python3 -m http.server 8080
 
-# Run tests
-npm test
-
-# Build for production
-npm run build
+# Or with Node.js
+npx serve . -p 8080
 ```
 
-### Adding New Features
-
-1. Backend: Add new endpoints in `main.py`
-2. Frontend: Create new components in `src/components`
-3. Database: Update MongoDB models in `models/database.py` (using Beanie)
-4. Update API service in `frontend/src/services/apiService.ts`
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-**Backend won't start:**
-- Check if Python virtual environment is activated
-- Verify all required environment variables are set in `.env`
-- Make sure you're in the correct directory when running commands
-
-**Python dependencies issues:**
+### Testing
 ```bash
-# Recreate virtual environment
-cd backend
-rm -rf venv
-python -m venv venv
-source venv/bin/activate  # or venv\Scripts\activate on Windows
-pip install -r requirements.txt
+# Test backend health
+curl http://localhost:8000/health
+
+# Test webhook locally
+python3 test_webhook.py
+
+# Test bot functionality
+python3 trigger_bot.py
 ```
 
-**Frontend dependencies issues:**
+## 🚨 Troubleshooting
+
+### Bot Not Responding in Slack
+1. **Check ngrok**: Ensure tunnel is running and URL is configured
+2. **Verify Permissions**: Bot needs proper OAuth scopes
+3. **Check Logs**: Look at backend logs for webhook errors
+4. **Reinstall App**: After permission changes, reinstall to workspace
+
+### Backend Issues
 ```bash
-cd frontend
-rm -rf node_modules package-lock.json
-npm install
+# Check if backend is running
+curl http://localhost:8000/health
+
+# Check for port conflicts
+lsof -i :8000
+
+# Restart backend
+pkill -f uvicorn
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-**Slack integration not working:**
-- Verify bot token and signing secret in `.env`
-- Check Slack app permissions
-- Ensure bot is added to channels
-
-**Frontend can't connect to backend:**
-- Check backend is running: `curl http://localhost:8000/health`
-- Verify backend is running on port 8000
-- Check CORS configuration in `backend/main.py`
-
-**MongoDB connection issues:**
+### Database Issues
 ```bash
-# Check if MongoDB is running locally
+# Check MongoDB status
 brew services list | grep mongodb  # macOS
 sudo systemctl status mongod       # Linux
 
 # Test connection
-mongosh  # Should connect to local MongoDB
+mongosh mongodb://localhost:27017
 ```
 
-**AI summaries failing:**
-- Verify Cloudflare Account ID and API Token in `.env`
-- Check Cloudflare Workers AI usage limits and account status
-- Ensure API token has correct permissions (Workers AI access)
-- Verify internet connection for Cloudflare API calls
-- Check Cloudflare status page for service availability
+### AI Service Issues
+- Verify Cloudflare Account ID and API Token
+- Check Cloudflare dashboard for usage limits
+- Ensure API token has Workers AI permissions
 
-### Debug Mode
+### Common Error Messages
 
-Enable debug logging:
-```env
-LOG_LEVEL=DEBUG
-```
+**"Error connecting to backend"**
+- Backend not running on port 8000
+- CORS issues (check browser console)
 
-## 📄 License
+**"Slack API failed"**
+- Invalid bot token or signing secret
+- Bot not added to channel
+- Missing OAuth permissions
 
-MIT License - see LICENSE file for details.
+**"AI Service unhealthy"**
+- Invalid Cloudflare credentials
+- API quota exceeded
+- Network connectivity issues
 
-## 🤝 Contributing
+## 🔒 Security Notes
+
+- **Environment Variables**: Never commit `.env` files
+- **Slack Secrets**: Keep bot tokens and signing secrets secure
+- **API Keys**: Protect Cloudflare API tokens
+- **Production**: Use proper secret management for deployment
+- **Webhooks**: In production, use HTTPS and verify signatures
+
+## 📈 Production Deployment
+
+For production deployment:
+
+1. **Use MongoDB Atlas** instead of local MongoDB
+2. **Configure proper HTTPS** instead of ngrok
+3. **Set up proper logging** and monitoring
+4. **Use environment variables** for all secrets
+5. **Implement rate limiting** for API endpoints
+6. **Monitor Cloudflare usage** and costs
+
+## 📝 Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Add tests for new functionality
+4. Test thoroughly
 5. Submit a pull request
-
-## 📞 Support
-
-For issues and questions:
-1. Check the troubleshooting section
-2. Review logs for error messages
-3. Create an issue on GitHub with details
-
----
-
-**Generated with AI assistance for rapid prototyping and development.**

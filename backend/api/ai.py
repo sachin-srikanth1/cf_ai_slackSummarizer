@@ -11,7 +11,7 @@ class CloudflareAIService:
     def __init__(self):
         self.account_id = os.getenv("CLOUDFLARE_ACCOUNT_ID")
         self.api_token = os.getenv("CLOUDFLARE_API_TOKEN")
-        self.model_name = "@cf/meta/llama-3.3-70b-instruct-fp8"  # Llama 3.3 on Workers AI
+        self.model_name = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"  # Llama 3.3 on Workers AI
         
         if not self.account_id or not self.api_token:
             logger.warning("Cloudflare credentials not found in environment variables")
