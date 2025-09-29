@@ -8,7 +8,7 @@ from reportlab.lib.units import inch
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak, Table, TableStyle
 from reportlab.lib.colors import HexColor, black, white
 from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_JUSTIFY
-import markdown
+# import markdown  # Not currently used
 import re
 
 logger = logging.getLogger(__name__)

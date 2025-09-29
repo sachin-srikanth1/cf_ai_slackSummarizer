@@ -7,7 +7,7 @@ motor==3.3.2
 pymongo==4.6.1
 beanie==1.24.0
 slack-sdk==3.27.1
-openai==1.3.7
+cloudflare==2.19.0
 reportlab==4.0.7
 Pillow==10.1.0
 python-multipart==0.0.6

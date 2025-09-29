@@ -232,9 +232,14 @@ class SlackService:
                         end_time
                     )
                     
-                    # TODO: Store messages in database
-                    # For now, just count them
-                    total_messages += len(messages)
+                    # Store messages in database
+                    from models.database import database
+                    stored_count = 0
+                    for message in messages:
+                        if await database.store_slack_message(message):
+                            stored_count += 1
+                    
+                    total_messages += stored_count
                     processed_channels += 1
                     
                     logger.info(f"Synced {len(messages)} messages from #{channel['name']}")

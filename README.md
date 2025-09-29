@@ -4,7 +4,7 @@ An intelligent agent that automatically generates EOD (End of Day) and EOW (End 
 
 ## 🚀 Features
 
-- **AI-Powered Summaries**: Generate intelligent summaries using OpenAI GPT-4 or Anthropic Claude
+- **AI-Powered Summaries**: Generate intelligent summaries using Cloudflare Workers AI with Llama 3.3
 - **Multiple Report Types**: End of Day (EOD) and End of Week (EOW) reports
 - **PDF Export**: Professional PDF reports with customizable formatting
 - **Slack Integration**: Direct integration with Slack for message collection and delivery
@@ -20,7 +20,9 @@ An intelligent agent that automatically generates EOD (End of Day) and EOW (End 
 - **Backend**: Python FastAPI with MongoDB/Beanie ODM
 - **Frontend**: React with TypeScript and Material-UI
 - **Database**: MongoDB for flexible data persistence
-- **AI Provider**: OpenAI GPT-4o-mini for cost-effective summarization
+- **AI Provider**: Cloudflare Workers AI with Llama 3.3 for powerful summarization
+- **State Management**: Cloudflare Durable Objects pattern for persistent state
+- **Workflows**: Cloudflare Workflows pattern for coordinated task execution
 - **PDF Generation**: ReportLab for professional PDF creation
 - **Local Development**: Simple setup with virtual environments
 
@@ -30,7 +32,8 @@ An intelligent agent that automatically generates EOD (End of Day) and EOW (End 
 - Python 3.11+
 - MongoDB (local or cloud)
 - Slack App with bot token and signing secret
-- OpenAI API key
+- Cloudflare Account with Workers AI access
+- Cloudflare API Token with AI permissions
 
 ## 🛠️ Setup Instructions
 
@@ -56,8 +59,9 @@ Edit `.env` with your configuration:
 SLACK_BOT_TOKEN=xoxb-your-bot-token-here
 SLACK_SIGNING_SECRET=your-signing-secret-here
 
-# AI Provider Configuration (OpenAI only)
-OPENAI_API_KEY=your-openai-api-key-here
+# Cloudflare Workers AI Configuration (Llama 3.3)
+CLOUDFLARE_ACCOUNT_ID=your-cloudflare-account-id-here
+CLOUDFLARE_API_TOKEN=your-cloudflare-api-token-here
 
 # MongoDB Configuration
 MONGODB_URL=mongodb://localhost:27017
@@ -66,7 +70,28 @@ DATABASE_NAME=slack_summarizer
 # Other settings...
 ```
 
-### 3. Slack App Setup
+### 3. Cloudflare Workers AI Setup
+
+1. **Create Cloudflare Account**: Sign up at [cloudflare.com](https://www.cloudflare.com/)
+2. **Enable Workers AI**: Go to your dashboard and enable Workers AI
+3. **Get Account ID**: 
+   - Go to the right sidebar of your Cloudflare dashboard
+   - Copy your Account ID
+4. **Create API Token**:
+   - Go to "My Profile" → "API Tokens"
+   - Create a custom token with permissions:
+     - `Account:Cloudflare Workers:Edit`
+     - `Zone:Zone:Read` (if using custom domains)
+   - Copy the token to `CLOUDFLARE_API_TOKEN`
+5. **Configure Environment**: Add your Account ID and API Token to `.env`
+
+The system uses Llama 3.3 (`@cf/meta/llama-3.3-70b-instruct-fp8`) for all AI operations including:
+- Slack message summarization
+- Chat interactions
+- Custom summary generation
+- Summary improvement suggestions
+
+### 4. Slack App Setup
 
 1. Create a new Slack app at [api.slack.com](https://api.slack.com/apps)
 2. Enable the following OAuth scopes:
@@ -82,7 +107,7 @@ DATABASE_NAME=slack_summarizer
 4. Copy the Bot User OAuth Token to `SLACK_BOT_TOKEN`
 5. Copy the Signing Secret to `SLACK_SIGNING_SECRET`
 
-### 4. Install MongoDB
+### 5. Install MongoDB
 
 #### Option 1: Local MongoDB Installation
 
@@ -113,7 +138,7 @@ Download and install from https://www.mongodb.com/try/download/community
 3. Get your connection string
 4. Update `MONGODB_URL` in `.env` with your Atlas connection string
 
-### 5. Install Dependencies
+### 6. Install Dependencies
 
 ```bash
 # Install root dependencies (includes concurrently for running both servers)
@@ -123,7 +148,7 @@ npm install
 npm run setup
 ```
 
-### 6. Running the Application
+### 7. Running the Application
 
 #### Option 1: Start Both Services Together (Recommended)
 
@@ -151,12 +176,14 @@ If you're on Windows, use the Windows-specific backend script:
 npm run start-backend-windows
 ```
 
-### 7. Verify Setup
+### 8. Verify Setup
 
 1. **MongoDB**: Ensure MongoDB is running (local) or Atlas connection works
-2. **Frontend**: Should be available at http://localhost:3000
-3. **Backend API**: Should be available at http://localhost:8000
-4. **Health Check**: http://localhost:8000/health should show all services as healthy
+2. **Cloudflare Workers AI**: Verify credentials are correct and AI service is accessible
+3. **Frontend**: Should be available at http://localhost:3000
+4. **Backend API**: Should be available at http://localhost:8000
+5. **Health Check**: http://localhost:8000/health should show all services as healthy
+6. **AI Service**: The health check should confirm Cloudflare Workers AI connectivity
 
 ## 🌐 Usage
 
@@ -251,17 +278,19 @@ Set the following environment variables for production:
 ENVIRONMENT=production
 MONGODB_URL=mongodb+srv://user:password@cluster.mongodb.net/slack_summarizer  # Use MongoDB Atlas for production
 SLACK_BOT_TOKEN=xoxb-production-token
-OPENAI_API_KEY=production-key
+CLOUDFLARE_ACCOUNT_ID=your-production-account-id
+CLOUDFLARE_API_TOKEN=your-production-api-token
 ```
 
 ### Security Considerations
 
 - Use MongoDB Atlas for production instead of local MongoDB
-- Store API keys in secure secret management
-- Enable HTTPS with reverse proxy (nginx, CloudFlare)
+- Store API keys and Cloudflare tokens in secure secret management
+- Enable HTTPS with reverse proxy (nginx, Cloudflare)
 - Configure CORS properly for your domain
-- Implement rate limiting
+- Implement rate limiting (Cloudflare Workers AI has built-in limits)
 - Regular security updates
+- Monitor Cloudflare Workers AI usage and costs
 
 ## 📊 Monitoring
 
@@ -269,7 +298,9 @@ OPENAI_API_KEY=production-key
 
 - Backend: `GET /health`
 - Database connectivity check
-- AI provider availability
+- Cloudflare Workers AI availability
+- State management system status
+- Workflow coordination health
 
 ### Logs
 
@@ -372,9 +403,11 @@ mongosh  # Should connect to local MongoDB
 ```
 
 **AI summaries failing:**
-- Verify OpenAI API key in `.env`
-- Check OpenAI account credits and rate limits
-- Ensure internet connection for API calls
+- Verify Cloudflare Account ID and API Token in `.env`
+- Check Cloudflare Workers AI usage limits and account status
+- Ensure API token has correct permissions (Workers AI access)
+- Verify internet connection for Cloudflare API calls
+- Check Cloudflare status page for service availability
 
 ### Debug Mode
 

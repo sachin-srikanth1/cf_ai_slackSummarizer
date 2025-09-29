@@ -2,43 +2,73 @@ import os
 import logging
 from typing import List, Dict, Any, Optional
 from datetime import datetime
-from openai import AsyncOpenAI
+import httpx
+import json
 
 logger = logging.getLogger(__name__)
 
-class AIService:
+class CloudflareAIService:
     def __init__(self):
-        self.openai_key = os.getenv("OPENAI_API_KEY")
+        self.account_id = os.getenv("CLOUDFLARE_ACCOUNT_ID")
+        self.api_token = os.getenv("CLOUDFLARE_API_TOKEN")
+        self.model_name = "@cf/meta/llama-3.3-70b-instruct-fp8"  # Llama 3.3 on Workers AI
         
-        if not self.openai_key:
-            logger.warning("OPENAI_API_KEY not found in environment variables")
-            self.client = None
+        if not self.account_id or not self.api_token:
+            logger.warning("Cloudflare credentials not found in environment variables")
+            self.base_url = None
         else:
-            self.client = AsyncOpenAI(api_key=self.openai_key)
+            self.base_url = f"https://api.cloudflare.com/client/v4/accounts/{self.account_id}/ai/run/{self.model_name}"
 
     async def health_check(self) -> Dict[str, Any]:
-        """Check OpenAI service availability"""
-        if not self.client:
+        """Check Cloudflare Workers AI service availability"""
+        if not self.base_url:
             return {
                 "status": "unhealthy", 
-                "error": "OpenAI API key not configured",
-                "provider": "openai"
+                "error": "Cloudflare credentials not configured",
+                "provider": "cloudflare_workers_ai"
             }
         
         try:
-            # Test OpenAI connection by listing models
-            models = await self.client.models.list()
-            return {
-                "status": "healthy",
-                "provider": "openai",
-                "models_available": len(models.data) > 0
+            # Test connection with a simple prompt
+            headers = {
+                "Authorization": f"Bearer {self.api_token}",
+                "Content-Type": "application/json"
             }
+            
+            test_payload = {
+                "messages": [
+                    {"role": "user", "content": "Hello"}
+                ],
+                "max_tokens": 10
+            }
+            
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    self.base_url,
+                    headers=headers,
+                    json=test_payload,
+                    timeout=30.0
+                )
+                
+                if response.status_code == 200:
+                    return {
+                        "status": "healthy",
+                        "provider": "cloudflare_workers_ai",
+                        "model": self.model_name
+                    }
+                else:
+                    return {
+                        "status": "unhealthy",
+                        "error": f"API returned {response.status_code}",
+                        "provider": "cloudflare_workers_ai"
+                    }
+                    
         except Exception as e:
-            logger.error(f"OpenAI health check failed: {e}")
+            logger.error(f"Cloudflare Workers AI health check failed: {e}")
             return {
                 "status": "unhealthy", 
                 "error": str(e),
-                "provider": "openai"
+                "provider": "cloudflare_workers_ai"
             }
 
     async def generate_summary(
@@ -47,35 +77,60 @@ class AIService:
         summary_type: str, 
         user_preferences: Optional[Dict[str, Any]] = None
     ) -> str:
-        """Generate AI summary from Slack messages using OpenAI"""
-        if not self.client:
-            raise Exception("OpenAI client not initialized")
+        """Generate AI summary from Slack messages using Cloudflare Workers AI (Llama 3.3)"""
+        if not self.base_url:
+            raise Exception("Cloudflare Workers AI not configured")
         
         try:
             # Build prompt based on messages and preferences
             prompt = self._build_summary_prompt(messages, summary_type, user_preferences)
             
-            # Generate summary using OpenAI GPT-4
-            response = await self.client.chat.completions.create(
-                model="gpt-4o-mini",  # Using cost-effective model
-                messages=[
+            # Call Cloudflare Workers AI
+            headers = {
+                "Authorization": f"Bearer {self.api_token}",
+                "Content-Type": "application/json"
+            }
+            
+            payload = {
+                "messages": [
                     {
-                        "role": "system", 
-                        "content": "You are a helpful assistant that creates clear, actionable summaries from Slack messages for engineering teams."
+                        "role": "system",
+                        "content": "You are a helpful AI assistant that creates clear, actionable summaries from Slack messages for engineering teams. Focus on being concise and well-organized."
                     },
                     {
-                        "role": "user", 
+                        "role": "user",
                         "content": prompt
                     }
                 ],
-                max_tokens=2000,
-                temperature=0.3
-            )
+                "max_tokens": 2000,
+                "temperature": 0.3,
+                "top_p": 0.9
+            }
             
-            return response.choices[0].message.content or "Unable to generate summary"
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    self.base_url,
+                    headers=headers,
+                    json=payload,
+                    timeout=60.0
+                )
+                
+                if response.status_code != 200:
+                    raise Exception(f"Cloudflare API error: {response.status_code} - {response.text}")
+                
+                result = response.json()
+                
+                # Extract response from Cloudflare Workers AI format
+                if "result" in result and "response" in result["result"]:
+                    return result["result"]["response"]
+                elif "choices" in result and len(result["choices"]) > 0:
+                    return result["choices"][0]["message"]["content"]
+                else:
+                    logger.warning(f"Unexpected response format: {result}")
+                    return "Unable to generate summary - unexpected response format"
                     
         except Exception as e:
-            logger.error(f"Error generating summary: {e}")
+            logger.error(f"Error generating summary with Cloudflare Workers AI: {e}")
             raise Exception(f"Failed to generate summary: {e}")
 
     def _build_summary_prompt(
@@ -87,9 +142,9 @@ class AIService:
         """Build the prompt for AI summary generation"""
         
         # Base prompt template
-        base_prompt = f"""You are an AI assistant that creates {summary_type} (End of {'Day' if summary_type == 'EOD' else 'Week'}) summaries from Slack messages for engineering teams.
+        base_prompt = f"""Create a {summary_type} (End of {'Day' if summary_type == 'EOD' else 'Week'}) summary from Slack messages for an engineering team.
 
-Your task is to analyze the following Slack messages and create a comprehensive summary that would be useful for team standups and progress tracking.
+Analyze the following messages and create a comprehensive summary for team standups and progress tracking.
 
 """
         
@@ -97,43 +152,42 @@ Your task is to analyze the following Slack messages and create a comprehensive 
         if user_preferences:
             style = user_preferences.get("summary_style", "technical")
             if style == "technical":
-                base_prompt += "Focus on technical details, code changes, bugs, and implementation specifics.\n"
+                base_prompt += "Focus on: technical details, code changes, bugs, implementation specifics.\n"
             elif style == "executive":
-                base_prompt += "Focus on high-level progress, milestones, and business impact.\n"
+                base_prompt += "Focus on: high-level progress, milestones, business impact.\n"
             elif style == "detailed":
-                base_prompt += "Provide comprehensive details including technical aspects, progress, and context.\n"
+                base_prompt += "Focus on: comprehensive details including technical aspects, progress, and context.\n"
         
         base_prompt += """
-Please organize the summary into the following sections:
+Organize the summary with these sections:
 
 ## 🎯 Key Accomplishments
-- List major achievements and completed tasks
-- Highlight important milestones reached
+- Major achievements and completed tasks
+- Important milestones reached
 
 ## 🔧 Technical Updates
-- Code changes, deployments, and technical work
+- Code changes, deployments, technical work
 - Bug fixes and technical decisions
-- Infrastructure or tooling updates
+- Infrastructure/tooling updates
 
 ## 🚨 Issues & Blockers
-- Problems encountered and their resolutions
-- Current blockers and obstacles
-- Items needing attention
+- Problems encountered and resolutions
+- Current blockers needing attention
 
 ## 📋 Upcoming Priorities
 - Next steps and planned work
-- Items to focus on in the next period
+- Focus items for next period
 
 ## 💬 Notable Discussions
 - Important conversations and decisions
-- Team coordination and planning discussions
+- Team coordination highlights
 
-Here are the Slack messages to analyze:
+Slack Messages:
 
 """
         
         # Add messages (limit to avoid token limits)
-        for i, message in enumerate(messages[:50]):  # Limit to 50 messages
+        for i, message in enumerate(messages[:40]):  # Reduced for Llama 3.3 context
             timestamp = message.get("timestamp", "")
             if isinstance(timestamp, datetime):
                 timestamp = timestamp.strftime("%Y-%m-%d %H:%M")
@@ -142,17 +196,17 @@ Here are the Slack messages to analyze:
             username = message.get("username", "unknown")
             text = message.get("text", "")
             
-            # Clean up text (remove mentions, links formatting, etc.)
+            # Clean up text
             cleaned_text = self._clean_message_text(text)
             
             base_prompt += f"\n[{timestamp}] #{channel} - {username}: {cleaned_text}\n"
         
-        if len(messages) > 50:
-            base_prompt += f"\n... and {len(messages) - 50} more messages\n"
+        if len(messages) > 40:
+            base_prompt += f"\n... and {len(messages) - 40} more messages\n"
         
         base_prompt += """
 
-Please create a clear, actionable summary that helps the team understand what happened and what's coming next. Use bullet points and clear headings. Keep it concise but informative.
+Create a clear, actionable summary with bullet points and headers. Keep it concise but informative.
 """
         
         return base_prompt
@@ -206,12 +260,16 @@ Please create a clear, actionable summary that helps the team understand what ha
 
 Just ask me in natural language and I'll help you out!"""
         
-        # Use OpenAI for more complex chat interactions
-        if self.client:
+        # Use Cloudflare Workers AI for more complex chat interactions
+        if self.base_url:
             try:
-                response = await self.client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[
+                headers = {
+                    "Authorization": f"Bearer {self.api_token}",
+                    "Content-Type": "application/json"
+                }
+                
+                payload = {
+                    "messages": [
                         {
                             "role": "system",
                             "content": "You are a helpful AI assistant for a Slack summarization tool. Help users with generating reports, managing preferences, and understanding the system. Keep responses concise and actionable."
@@ -221,12 +279,27 @@ Just ask me in natural language and I'll help you out!"""
                             "content": message
                         }
                     ],
-                    max_tokens=200,
-                    temperature=0.7
-                )
-                return response.choices[0].message.content or "I'm here to help with your Slack summaries!"
+                    "max_tokens": 200,
+                    "temperature": 0.7
+                }
+                
+                async with httpx.AsyncClient() as client:
+                    response = await client.post(
+                        self.base_url,
+                        headers=headers,
+                        json=payload,
+                        timeout=30.0
+                    )
+                    
+                    if response.status_code == 200:
+                        result = response.json()
+                        if "result" in result and "response" in result["result"]:
+                            return result["result"]["response"]
+                        elif "choices" in result and len(result["choices"]) > 0:
+                            return result["choices"][0]["message"]["content"]
+                
             except Exception as e:
-                logger.error(f"Error in chat processing: {e}")
+                logger.error(f"Error in chat processing with Cloudflare Workers AI: {e}")
         
         # Default response
         return "I'm here to help you generate Slack summaries! Try asking for an 'EOD report' or 'EOW report', or say 'help' to see what I can do."
@@ -237,8 +310,8 @@ Just ask me in natural language and I'll help you out!"""
         custom_prompt: str
     ) -> str:
         """Generate summary with custom user prompt"""
-        if not self.client:
-            raise Exception("OpenAI client not initialized")
+        if not self.base_url:
+            raise Exception("Cloudflare Workers AI not configured")
         
         try:
             # Combine custom prompt with message data
@@ -248,7 +321,7 @@ Based on the following Slack messages, please fulfill the above request:
 
 """
             
-            for message in messages[:30]:  # Limit for token management
+            for message in messages[:25]:  # Limit for token management
                 timestamp = message.get("timestamp", "")
                 if isinstance(timestamp, datetime):
                     timestamp = timestamp.strftime("%Y-%m-%d %H:%M")
@@ -259,10 +332,13 @@ Based on the following Slack messages, please fulfill the above request:
                 
                 full_prompt += f"[{timestamp}] #{channel} - {username}: {text}\n"
             
-            # Use OpenAI
-            response = await self.client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
+            headers = {
+                "Authorization": f"Bearer {self.api_token}",
+                "Content-Type": "application/json"
+            }
+            
+            payload = {
+                "messages": [
                     {
                         "role": "system",
                         "content": "You are a helpful assistant that can analyze Slack messages and respond to custom requests."
@@ -272,11 +348,28 @@ Based on the following Slack messages, please fulfill the above request:
                         "content": full_prompt
                     }
                 ],
-                max_tokens=1500,
-                temperature=0.5
-            )
+                "max_tokens": 1500,
+                "temperature": 0.5
+            }
             
-            return response.choices[0].message.content or "Unable to process custom request"
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    self.base_url,
+                    headers=headers,
+                    json=payload,
+                    timeout=60.0
+                )
+                
+                if response.status_code != 200:
+                    raise Exception(f"Cloudflare API error: {response.status_code}")
+                
+                result = response.json()
+                if "result" in result and "response" in result["result"]:
+                    return result["result"]["response"]
+                elif "choices" in result and len(result["choices"]) > 0:
+                    return result["choices"][0]["message"]["content"]
+                else:
+                    return "Unable to process custom request"
                 
         except Exception as e:
             logger.error(f"Error generating custom summary: {e}")
@@ -284,13 +377,17 @@ Based on the following Slack messages, please fulfill the above request:
 
     async def suggest_summary_improvements(self, summary: str) -> List[str]:
         """Suggest improvements for a generated summary"""
-        if not self.client:
-            return ["OpenAI client not available for suggestions"]
+        if not self.base_url:
+            return ["Cloudflare Workers AI not available for suggestions"]
         
         try:
-            response = await self.client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
+            headers = {
+                "Authorization": f"Bearer {self.api_token}",
+                "Content-Type": "application/json"
+            }
+            
+            payload = {
+                "messages": [
                     {
                         "role": "system",
                         "content": "You are an expert at reviewing team summaries. Provide 3-5 specific, actionable suggestions to improve the given summary."
@@ -300,15 +397,35 @@ Based on the following Slack messages, please fulfill the above request:
                         "content": f"Please review this team summary and suggest improvements:\n\n{summary}"
                     }
                 ],
-                max_tokens=500,
-                temperature=0.3
-            )
+                "max_tokens": 500,
+                "temperature": 0.3
+            }
             
-            suggestions_text = response.choices[0].message.content or ""
-            # Split into list of suggestions
-            suggestions = [s.strip() for s in suggestions_text.split('\n') if s.strip() and not s.strip().startswith('#')]
-            return suggestions[:5]  # Limit to 5 suggestions
-            
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    self.base_url,
+                    headers=headers,
+                    json=payload,
+                    timeout=30.0
+                )
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    suggestions_text = ""
+                    
+                    if "result" in result and "response" in result["result"]:
+                        suggestions_text = result["result"]["response"]
+                    elif "choices" in result and len(result["choices"]) > 0:
+                        suggestions_text = result["choices"][0]["message"]["content"]
+                    
+                    # Split into list of suggestions
+                    suggestions = [s.strip() for s in suggestions_text.split('\n') if s.strip() and not s.strip().startswith('#')]
+                    return suggestions[:5]  # Limit to 5 suggestions
+                
         except Exception as e:
             logger.error(f"Error generating suggestions: {e}")
-            return [f"Error generating suggestions: {str(e)}"]
+        
+        return [f"Error generating suggestions: unable to connect to Cloudflare Workers AI"]
+
+# Create alias for backwards compatibility
+AIService = CloudflareAIService
